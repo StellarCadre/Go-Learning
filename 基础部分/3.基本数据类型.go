@@ -18,7 +18,7 @@ func main() {
 
 	fmt.Println(a1, a2, a3, a4, a5, a6, b1, b2)
 
-	//字符型：单字节字符byte
+	//字符型：单字节字符byte其实在go中是uint8的别名
 	var c1 byte = 'a'
 	fmt.Println(c1)        //在Go中，字符本质是整数，所以直接输出时只会是该字符对应的ASCII码值97
 	fmt.Printf("%c\n", c1) //使用%c才能表示原本的字符
