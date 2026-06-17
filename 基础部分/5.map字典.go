@@ -11,9 +11,9 @@ func changeMap(cityMap map[int]string) {
 func main() {
 	//map的定义和使用
 	//var userMap map[int]string //法一：定义map，但是没有初始化，值为nil，不能直接使用，需要先进行初始化
-	//userMap := make(map[int]string,10) //法二：make函数来初始化map,10是预分配的内存空间
+	//userMap := make(map[int]string,10) //法二：make函数来初始化map,10是预分配的内存空间。当10个key值都被占用时，会自动扩容。
 	//userMap := make(map[int]string) //法三：make函数来初始化map
-	//userMap[1001] = "张三"
+	//userMap[1001] = "张三" 初始化后正常赋值
 	//userMap[1002] = "李四"
 	//userMap[1003] = "王五"
 
@@ -22,6 +22,7 @@ func main() {
 		1002: "李四",
 		1003: "王五",
 	}
+
 	fmt.Println(userMap)
 	fmt.Println(userMap[1002])
 	fmt.Println(userMap[1004])   //不存在的key，返回value类型的零值,如string的空字符串
