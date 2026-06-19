@@ -13,7 +13,7 @@ type Student struct { //定义一个结构体
 	name  string
 	age   int
 	score int
-	Class Class //嵌套Class结构体（匿名嵌套：Student拥有Class的所有属性）  方法是直接把另一个结构体的名字拿过来，   组合
+	Class Class //嵌套Class结构体（匿名嵌套，也叫做继承，Student拥有Class的所有属性）  方法是直接把另一个结构体的名字拿过来，   组合
 }
 
 // 结构体方法使用结构体：
