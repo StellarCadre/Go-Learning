@@ -7,21 +7,21 @@ import (
 )
 
 type Teacher struct {
-	Name string `json:"name"`
-	Age  int `json:"age"`
-	IsMan bool `json:"is_man"`
+	Name  string `json:"name"`
+	Age   int    `json:"age"`
+	IsMan bool   `json:"is_man"`
 }
 
-//给结构体绑定方法，该方法只属于Teacher结构体
-func (t Teacher)Call(){  // 方法名 Call 是大写，属于导出方法
+// 给结构体绑定方法，该方法只属于Teacher结构体
+func (t Teacher) Call() { // 方法名 Call 是大写，属于导出方法
 	fmt.Println("你觉得我会被调用吗？1")
 }
 
-func (t Teacher)Add(){
+func (t Teacher) Add() {
 	fmt.Println("你觉得我会被调用吗？2")
 }
 
-func (t Teacher)add(){  //由于方法名是小写，属于非导出方法，无法被反射获取
+func (t Teacher) add() { //由于方法名是小写，属于非导出方法，无法被反射获取
 	fmt.Println("你觉得我会被调用吗？3")
 }
 
@@ -29,22 +29,22 @@ func (t Teacher)add(){  //由于方法名是小写，属于非导出方法，无
 //	fmt.Println("打印输出为：",str)
 //}
 
-func CallMethord(obj any)  {
-    v:=reflect.ValueOf(obj).Elem()  //获取字段的值
-	t:=reflect.TypeOf(obj).Elem()  //获取字段的字段名、字段类型、标签（tag）、偏移量
+func CallMethord(obj any) {
+	v := reflect.ValueOf(obj).Elem()     //解引用后获取字段的值
+	t := reflect.TypeOf(obj).Elem()      //解引用后获取字段的字段名、字段类型、标签（tag）、偏移量
 	for i := 0; i < v.NumMethod(); i++ { //遍历结构体字段  v.NumMethod()表示获取v的方法数量
-		m := t.Method(i)  //这样获取的方法，只看、只读方法的名字、信息（不能调用！）因为是使用t得到类型
+		m := t.Method(i) //这样获取的方法，只看、只读方法的名字、信息（不能调用！）因为是使用t得到类型
 		fmt.Println(m.Name)
 
 		//调用结构体中的方法（无参传nil/空切片，有参需包装为[]reflect.Value）
-		method := v.Method(i)  //这样获取的方法，能执行、能调用真正的函数,因为是使用v得到值
+		method := v.Method(i) //这样获取的方法，能执行、能调用真正的函数,因为是使用v得到值
 		method.Call([]reflect.Value{})
 		//method.Call([]reflect.Value{reflect.ValueOf("你好")})
 	}
 }
 
 func main() {
-   teacher := Teacher{Name: "MaWeika", Age: 110, IsMan: false}
+	teacher := Teacher{Name: "MaWeika", Age: 500, IsMan: false}
 	CallMethord(&teacher)
 }
 

@@ -6,30 +6,28 @@ import (
 	"reflect"
 )
 
-func modify(obj any,value any) { //any表示接收任意类型的值（含指针），所以不用加*
-	v1:= reflect.ValueOf(obj)  //这样是拿到了该值所在的地址（指针），还需要解引用，才能拿到该值。
-	v2:=reflect.ValueOf(value)
+func modify(obj any, value any) { //any表示接收任意类型的值（含指针），所以不用加*。
+	v1 := reflect.ValueOf(obj) //这样是拿到了该值所在的地址（指针），还需要解引用，才能拿到该值。
+	v2 := reflect.ValueOf(value)
 	elem1 := v1.Elem() //解引用，拿到该值,并赋值给elem1。注意，这里不能直接使用*变量=新值，必须使用Elem。
 	elem2 := v2.Elem()
-	if elem1.Kind() != elem2.Kind() {  //若传入的值的类型与原值的类型不一致，则不进行修改
+	if elem1.Kind() != elem2.Kind() { //若传入的值的类型与原值的类型不一致，则不进行修改
 		return
 	}
-	switch elem1.Kind() {  //然后判断该值的类型，并进行修改
-	   case reflect.Int:
-            elem1.SetInt(elem2.Int())  //当为int型时，使用SetInt()方法进行修改
-	   case reflect.String:
-            elem1.SetString(elem2.String())
+	switch elem1.Kind() { //然后判断该值的类型，并进行修改
+	case reflect.Int:
+		elem1.SetInt(elem2.Int()) //当为int型时，使用SetInt()方法进行修改
+	case reflect.String:
+		elem1.SetString(elem2.String())
 	}
 }
 
-
 func main() {
-    a:=1
-	b:=334
-	modify(&a,&b)
+	a := 1
+	b := 334
+	modify(&a, &b)
 	fmt.Println(a)
 }
-
 
 /*
 =============================================

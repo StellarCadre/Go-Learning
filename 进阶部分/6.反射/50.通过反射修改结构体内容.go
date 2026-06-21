@@ -13,45 +13,39 @@ type Person struct {
 	Name2 string
 }
 
-func Modify(obj any){   //修改结构体中的值，并转换为json字符串的函数
-	t := reflect.TypeOf(obj)  //获取类型,在这里是Person结构体类型
-	v := reflect.ValueOf(obj) //获取值
-	if t.Kind() == reflect.Ptr {  // 如果是指针，解引用
+func Modify(obj any) { //修改结构体中的值，并转换为json字符串的函数
+	t := reflect.TypeOf(obj)     //获取类型,在这里是Person结构体类型
+	v := reflect.ValueOf(obj)    //获取值
+	if t.Kind() == reflect.Ptr { // 如果是指针，解引用
 		t = t.Elem()
 		v = v.Elem()
-	}
-	if t.Kind() != reflect.Struct {
-		return
 	}
 	// 判断是否为结构体
 	if t.Kind() != reflect.Struct {
 		return
 	}
-	for i:=0;i<v.NumField();i++{  //使用一个for循环，来多次拿字段
+	for i := 0; i < v.NumField(); i++ { //使用一个for循环，来多次拿字段
 		//获取big标签
 		big := t.Field(i).Tag.Get("big")
 		if big == "-" {
 			continue
 		}
-		values := v.Field(i)  //获取索引为i时的字段的值。字段的值就是自己定义的Jack,Jerry等
-		values.SetString(strings.ToUpper(values.String()))  // 将字段值改为大写
+		values := v.Field(i)                               //获取索引为i时的字段的值。字段的值就是自己定义的Jack,Jerry等
+		values.SetString(strings.ToUpper(values.String())) // 将字段值改为大写
 
 		// 打印时字段名变大写。注意，无法修改结构体中，字段的名称，因为结构体的字段名称是只读的。只能在打印时，临时将字段名称转换为大写。
-		fieldName := t.Field(i).Name  //获取索引为i时的字段的名称
+		fieldName := t.Field(i).Name //获取索引为i时的字段的名称
 		upperName := strings.ToUpper(fieldName)
 		fmt.Println(upperName)
 	}
 }
 
-
 func main() {
-	s:=Person{Name1: "Jack", Name2: "Jerry",}
+	s := Person{Name1: "Jack", Name2: "Jerry"}
 	fmt.Println("修改前：", s) // 打印修改前的结构体
 	Modify(&s)
 	fmt.Println("修改后：", s) // 打印修改后的结构体
 }
-
-
 
 /*
 
@@ -105,4 +99,3 @@ func main() {
 
 ====================================================
 */
-

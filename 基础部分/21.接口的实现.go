@@ -1,7 +1,9 @@
 // 创建时间：2026/5/31 下午10:18
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 /*
 接口是一组仅包含方法名、参数、返回值的方法的集合，未实现具体方法
@@ -52,6 +54,23 @@ func main() {
 	d1 := Tiger{name: "小虎"}
 	Function(d1)
 
+	myFunc(100)
+	myFunc("hello")
+	myFunc(true)
+
+}
+
+func myFunc(Variable interface{}) { //这里的Variable是空接口，可以接受任意类型。使得该函数的包容性更强。
+	fmt.Println(Variable)
+	//fmt.Printf("%T\n",Variable)
+	switch Variable.(type) {
+	case int:
+		fmt.Println("是int类型")
+	case string:
+		fmt.Println("是string类型")
+	case bool:
+		fmt.Println("是bool类型")
+	}
 }
 
 /*

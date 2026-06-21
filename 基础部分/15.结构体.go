@@ -32,6 +32,19 @@ func (s *Student) setage2(age int) {
 	s.age = s.age - 1
 }
 
+// 继承
+type GoodSStudent struct {
+	Student     // 继承Student结构体的所有属性和方法
+	id      int //新增score字段
+}
+
+func (g GoodSStudent) Study() { //重写了Student结构体的Study方法
+	fmt.Println("正在学习语文的是", g.name)
+}
+func (g GoodSStudent) getage() {
+	fmt.Println("他的年龄是", g.age)
+} //子类自己新增的方法
+
 // 非结构体方法使用结构体：值传递和指针传递
 func change1(stu Student) { //以值传递的形式接收结构体仍然是值传递，不会改变原始值
 	stu.name = "linhuahua"
@@ -79,5 +92,14 @@ func main() {
 	fmt.Println("非结构体方法修改结构体之打印测试2")
 	change2(&s1)
 	s1.Study()
+
+	fmt.Println("父类子类测试")
+	g1 := GoodSStudent{ //创建一个好学生（学生的子类）的结构体实例，同时他能拿到Student的所有属性和方法
+		Student: Student{name: "liuna", age: 44, score: 144, Class: c1},
+		id:      0001,
+	}
+	g1.getage()   //调用自己的方法
+	g1.Study()    //调用重写父类后的方法
+	g1.getclass() //调用继承至父类的方法
 
 }

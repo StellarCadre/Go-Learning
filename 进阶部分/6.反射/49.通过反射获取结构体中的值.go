@@ -7,39 +7,54 @@ import (
 )
 
 type Student struct {
-	Name string `json:"name"`
-	Age  int `json:"age"`
-	IsMan bool `json:"is_man"`
+	Name  string `json:"name"`   // JSON序列化时字段名映射为 name
+	Age   int    `json:"age"`    // JSON字段名映射为 age
+	IsMan bool   `json:"is_man"` // JSON字段名映射为 is_man
 }
 
-func ParseJson(obj any){   //读取结构体中的值，并转换为json字符串的函数
-    t:=reflect.TypeOf(obj)  //获取类型,在这里是Student结构体类型
-	v:=reflect.ValueOf(obj) //获取值
-	//num:=v.NumField() //必须是获取类型或值之后，才能调用 NumField()获取字段数量,结果是3.
-    for i:=0;i<v.NumField();i++{  //使用一个for循环，来多次拿字段
+func (s Student) Test1() {
+	fmt.Println("你好，我是Student结构体的Test1方法")
+}
+func (s Student) Test2() {
+	fmt.Println("你好，我是Student结构体的Test2方法")
+}
 
-        fmt.Println(v.Field(i))  //获取索引为i时的字段的值。字段的值就是自己定义的Tom、20、true等
-        fmt.Println()
+func ParseJson(obj any) { //该函数用于读取结构体中的值，并转换为json字符串。
+	t := reflect.TypeOf(obj)  //获取类型,在这里是Student结构体类型
+	fmt.Println(t.Name())     //打印结构体的名称，结果是Student
+	v := reflect.ValueOf(obj) //获取值
+	//num:=v.NumField() //必须是获取类型或值之后，才能调用 NumField()获取字段数量,结果是3。
 
-		typename:=t.Field(i)  //获取索引为i时的字段的名称、标签等。
-		fmt.Println(typename.Name)  //获取字段的名称，结果是Name、Age、IsMan
-		fmt.Println(typename.Tag)  //获取字段的标签，结果是json: "name"、json: "age"、json: "is_man"
-		fmt.Println(typename.Tag.Get("json"))  //获取字段的标签中的json字符串，结果是name、age、is_man
+	for i := 0; i < v.NumField(); i++ { //使用一个for循环，来多次拿字段。字段就是Name、Age、IsMan。
+		fmt.Println("-----------------获取索引为i时的字段的值------------------------")
+		fmt.Println(v.Field(i)) //获取索引为i时的字段的值。字段的值就是自己定义的Tom、20、true等。
+		fmt.Println("-----------------获取索引为i时的字段的名称、标签等----------------")
+		typename := t.Field(i)     //typename保存了索引为i时的字段的名称、标签等。
+		fmt.Println(typename.Name) //获取字段的名称，结果是Name、Age、IsMan
+		fmt.Println("-----------------获取索引为i时的字段的标签-----------------------")
+		fmt.Println(typename.Tag)             //获取字段的标签，结果是json: "name"、json: "age"、json: "is_man"
+		fmt.Println(typename.Tag.Get("json")) //获取字段的标签中的json字符串，即去除json:，结果是name、age、is_man
+		fmt.Println("-----------------获取索引为i时的字段的类型-----------------------")
+		fmt.Println(typename.Type) //获取字段的类型，结果是string、int、bool
 
 		/*
-		有关v.Field(i)和t.Field(i)的区别：
-		v.Field(i)是获取字段的值
-		t.Field(i)是获取字段的字段名、字段类型、标签（tag）、偏移量
-		 */
+			有关v.Field(i)和t.Field(i)的区别：
+			v.Field(i)是获取字段的值
+			t.Field(i)是获取字段的字段名、字段类型、标签（tag）、偏移量
+		*/
 	}
-}
 
+	for i := 0; i < t.NumMethod(); i++ { //使用一个for循环，根据得到的结构体的类型，来遍历结构体中的方法。NumMethod()表示获取方法的数量
+		fmt.Println("-----------------获取索引为i时的方法----------------")
+		fmt.Println(t.Method(i).Name) //获取方法的名称，结果是xx1，xx2，xx3等
+	}
+
+}
 
 func main() {
-   s:=Student{Name: "Tom", Age:  20, IsMan: true,}
-   ParseJson(s)
+	s := Student{Name: "Tom", Age: 20, IsMan: true}
+	ParseJson(s)
 }
-
 
 /*
 
