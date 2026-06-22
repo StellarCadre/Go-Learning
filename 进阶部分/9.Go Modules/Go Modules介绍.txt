@@ -1,0 +1,238 @@
+# Go Modules 完整全面教程
+Go Modules = Go 官方自带的 项目 + 依赖管理体系，对标 Java Maven/Gradle、Node npm、Python pip
+## 一、Go Modules 是什么
+### 1. 诞生背景
+Go 1.11 引入，**Go 1.13 正式标准化，Go 1.16+ 默认开启**，是 Go 官方标准依赖管理工具，彻底替代老旧的 `GOPATH` 模式。
+
+### 2. 解决 GOPATH 的核心痛点
+1. 项目必须强制放在 `$GOPATH/src` 下，目录限制极大；
+2. 无版本锁定，同一项目无法同时使用同一个库的多个版本；
+3. 无依赖清单，多人协作、CI 构建无法保证环境一致；
+4. 无官方工具，只能依赖第三方 dep/glide 等包管理器。
+
+### 3. 核心优势
+1. **项目路径自由**：任意文件夹都能创建 Go 项目，不再绑定 GOPATH；
+2. **版本精准锁定**：语义化版本管理，固定依赖版本；
+3. **可复现构建**：`go.sum` 哈希校验，所有人拉取相同依赖；
+4. **全局缓存依赖**：所有项目共用 `$GOMODCACHE` 缓存，不用重复下载；
+5. **内置命令**：原生集成 `go` 工具链，无需第三方；
+6. **支持代理、私有仓库、本地替换依赖**。
+
+### 4. 层级关系
+**仓库(Repo) ≥ 模块(Module) ≥ 包(Package) ≥ .go源码文件**
+- 一个 Git 仓库通常对应 1 个模块（根目录存在 `go.mod`）；
+- 一个模块包含多个业务包；
+- 一个包由同目录下多个 go 文件组成。
+
+## 二、环境开关：GO111MODULE
+控制模块模式开启状态：
+```bash
+# 1. 强制开启模块模式（推荐，1.16+默认）
+go env -w GO111MODULE=on
+
+# 2. 自动模式（1.13~1.15默认）
+# 项目不在GOPATH/src自动启用，在GOPATH下则关闭
+go env -w GO111MODULE=auto
+
+# 3. 强制关闭，退回GOPATH（新项目禁止使用）
+go env -w GO111MODULE=off
+```
+
+## 三、两大核心文件：go.mod / go.sum
+### 1. go.mod（模块配置文件，项目根目录）
+初始化 `go mod init` 自动生成，记录模块全部规则，**必须提交 Git**。
+完整示例：
+```go
+// 模块路径（导入包时使用，一般为仓库地址）
+module github.com/xxx/demo-project
+
+// 声明本项目最低兼容Go版本
+go 1.22
+
+// 直接依赖：项目代码直接import的库
+require github.com/gin-gonic/gin v1.9.1
+
+// indirect：间接依赖，被其他依赖引入，代码未直接导入
+require github.com/go-playground/validator/v10 v10.15.0 // indirect
+
+// replace：替换依赖，本地调试/改第三方源码专用
+replace github.com/gin-gonic/gin => ../gin-fork
+
+// exclude：排除指定版本，强制不使用该版本
+exclude github.com/gin-gonic/gin v1.9.0
+```
+#### 四大指令详解
+| 指令 | 作用 |
+|------|------|
+| module | 定义模块唯一路径 |
+| go | 指定项目要求的Go语言版本 |
+| require | 声明依赖及锁定版本 |
+| replace | 将远程模块替换为本地/其他远程版本 |
+| exclude | 屏蔽某个依赖版本 |
+
+### 2. go.sum（依赖校验文件）
+自动生成，**必须提交代码仓库**。
+作用：
+1. 记录每个依赖包、对应 go.mod 文件的 SHA256 哈希值；
+2. 下载依赖时校验哈希，防止依赖包被篡改、投毒；
+3. 保证不同机器下载完全一致的依赖代码。
+
+示例行：
+```
+github.com/gin-gonic/gin v1.9.1 h1:abc123xxxx=
+github.com/gin-gonic/gin v1.9.1/go.mod h1:def456xxxx=
+```
+- `h1:` = SHA256 校验和；
+- 每条依赖存两条记录：源码包哈希、对应模块go.mod哈希。
+
+## 四、语义化版本 SemVer（Go Modules 版本规范）
+版本格式：`v主版本.次版本.补丁[-预发布+构建元数据]`
+示例：`v1.5.2` / `v2.0.0-rc1` / `v0.9.3+build2026`
+1. **主版本 Major**：不兼容破坏性更新（v1→v2）；v0 代表开发阶段，不保证兼容；
+2. **次版本 Minor**：新增功能，向下完全兼容；
+3. **补丁 Patch**：bug 修复，无功能变更；
+4. 预发布 `-rc/-beta`：优先级低于正式版；
+
+### 重要规则：v2+ 大版本路径规范
+主版本 ≥2 时，模块路径末尾必须加 `/vN`：
+```go
+// v1 无需后缀
+module github.com/xxx/tool
+require github.com/xxx/tool v1.3.0
+
+// v2 必须带 /v2
+module github.com/xxx/tool/v2
+require github.com/xxx/tool/v2 v2.1.0
+```
+
+## 五、全套 go mod 命令详解
+### 1. go mod init（初始化模块，项目第一步）
+```bash
+# 创建模块，模块路径自定义（推荐仓库地址）
+go mod init github.com/myuser/demo
+```
+执行后自动生成 `go.mod`。
+
+### 2. go mod tidy（最常用，整理依赖）
+```bash
+go mod tidy
+```
+功能：
+1. 扫描项目所有代码，自动添加缺失的 `require` 依赖；
+2. 删除代码中不再导入的无用依赖；
+3. 同步更新 `go.mod`、`go.sum`；
+4. 自动区分直接依赖/indirect间接依赖。
+
+### 3. go get（添加/升级/降级指定依赖）
+```bash
+# 拉取最新版本
+go get github.com/gin-gonic/gin@latest
+
+# 指定固定版本
+go get github.com/gin-gonic/gin@v1.9.1
+
+# 降级到旧版本
+go get github.com/gin-gonic/gin@v1.8.2
+
+# 删除依赖（推荐tidy，也可get @none）
+go get github.com/gin-gonic/gin@none
+```
+
+### 4. go mod download（预下载所有依赖到本地缓存）
+```bash
+go mod download
+```
+提前缓存全部依赖，适合离线打包、CI 环境。缓存目录：`$GOMODCACHE`（默认 `$GOPATH/pkg/mod`）。
+
+### 5. go mod vendor（生成vendor目录离线打包）
+```bash
+# 在项目根生成vendor文件夹，拷贝所有依赖源码
+go mod vendor
+
+# 使用vendor构建（不走全局缓存）
+go build -mod=vendor
+```
+适用场景：内网无外网、离线部署。
+
+### 6. 其他实用命令
+```bash
+# 打印完整依赖树，排查冲突
+go mod graph
+
+# 查看某个依赖为什么被引入
+go mod why github.com/go-playground/validator
+
+# 校验本地缓存依赖哈希是否和go.sum一致
+go mod verify
+
+# 命令行编辑go.mod，脚本自动化使用
+go mod edit
+
+# 清理全局缓存
+go clean -modcache
+```
+
+## 六、国内加速：GOPROXY 模块代理
+国外仓库访问慢/超时，配置国内镜像代理：
+```bash
+# 全局设置七牛/阿里云镜像（推荐）
+go env -w GOPROXY=https://goproxy.cn,direct
+
+# direct 含义：代理找不到时，直接访问源仓库
+```
+
+## 七、私有仓库配置（企业内部模块）
+### 1. GOPRIVATE 标记私有模块，不走代理
+```bash
+# 匹配所有公司私有仓库
+go env -w GOPRIVATE=github.com/company/*,gitlab.company.com/*
+```
+### 2. Git 凭证配置
+- SSH：配置 ssh key，免密拉取；
+- HTTPS：git 配置账号密码凭证缓存。
+
+## 八、replace 本地调试依赖（高频开发场景）
+场景：需要修改第三方库源码，本地调试，不用推送远程仓库。
+1. 把第三方库 clone 到本地文件夹；
+2. 在项目 go.mod 添加 replace：
+```go
+// 远程模块路径 => 本地源码相对路径
+replace github.com/gin-gonic/gin => ../gin-local
+```
+执行 `go mod tidy` 即可生效，编译时优先使用本地代码。
+
+## 九、依赖冲突解决机制
+1. Go Modules 采用**最小版本选择 MVS** 算法；
+2. 所有依赖统一选用**满足所有模块要求的最低兼容版本**；
+3. 冲突时可手动 `go get` 指定更高版本强制升级；
+4. 复杂冲突用 `go mod graph` 查看完整依赖链路。
+
+## 十、完整项目标准流程（从零创建）
+1. 新建空文件夹（不在GOPATH也可）
+2. 初始化模块
+   ```bash
+   go mod init github.com/xxx/demo
+   ```
+3. 编写 main.go，导入第三方包
+   ```go
+   import "github.com/gin-gonic/gin"
+   ```
+4. 自动整理依赖
+   ```bash
+   go mod tidy
+   ```
+5. 运行/编译
+   ```bash
+   go run main.go
+   go build -o app
+   ```
+6. 提交代码：必须提交 `go.mod`、`go.sum`
+
+## 十一、常见面试核心要点总结
+1. `go.mod` 声明依赖版本，`go.sum` 做哈希校验防篡改；
+2. `go mod tidy` 是维护依赖的标准命令，不要手动删 require；
+3. v2+ 模块路径必须带 `/v2`；
+4. replace 用于本地调试第三方库；
+5. GOPROXY 解决国内下载慢，GOPRIVATE 区分私有仓库；
+6. vendor 用于离线打包，默认构建不读取vendor，需加 `-mod=vendor`；
+7. indirect 代表间接依赖，当前项目未直接 import。
