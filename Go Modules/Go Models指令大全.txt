@@ -1,0 +1,114 @@
+一.go mod命令
+
+1.go mod init 生成go.mod文件
+初始化 Go Module，自动生成项目核心配置文件 go.mod，宣告当前文件夹是独立 Go 模块，摆脱 GOPATH 路径限制。
+使用时机：新建空白 Go 项目，第一次创建工程；老旧 GOPATH 项目迁移为 Go Modules；从 Git 拉取开源 Go 项目，缺失 go.mod 时。
+用法：
+    # 自定义模块名（推荐仓库地址，用于包导入）
+    go mod init github.com/xxx/demo-project
+    # 简单本地项目，模块名直接写项目文件夹名
+    go mod init Go_Project
+
+2.go mod download 下载go.mod文件中指明的所有依赖
+根据 go.mod + go.sum 中记录的依赖，批量预下载所有依赖包到本地全局缓存（$GOMODCACHE），不会拷贝到项目内。
+使用时机：CI / 流水线打包：提前缓存依赖，避免编译时下载超时；离线开发：提前下载全部依赖，断网也能编译运行；只想下载依赖，暂时不编译代码。
+用法：
+    # 下载全部依赖
+    go mod download
+    # 只下载指定单个依赖
+    go mod download github.com/gin-gonic/gin
+
+3.go mod tidy 整理现有的依赖
+自动扫描项目全部 .go 源码，全自动维护依赖：
+    代码 import 了但 go.mod 没记录 → 自动添加 require 并下载；
+    go.mod 存在但代码不再使用的依赖 → 自动删除；
+    自动区分直接依赖 /indirect 间接依赖；
+    同步更新 go.mod、go.sum。
+使用时机：
+       新增 / 删除第三方包导入后；
+       拉取团队更新代码，同步依赖；
+       每次提交代码前，统一整理依赖；
+       不确定依赖是否完整，一键修复依赖缺失。
+用法：
+    # 整理依赖
+    go mod tidy
+注意：使用该语句，必须满足go.mod文件存在，且项目的go文件和文件夹无中文。
+
+
+4.go mod graph 查看现有的依赖结构
+打印完整依赖树，展示哪个包引入了哪个依赖，排查依赖冲突、版本冲突专用。
+使用时机：
+       项目出现依赖版本冲突、重复依赖；
+       想查某个间接依赖是谁引入的；
+       梳理项目整体依赖结构。
+用法：
+    # 查看依赖树
+    go mod graph
+    # 过滤只查看 gin 相关依赖链路
+    go mod graph | grep gin
+
+5.go mod edit 编辑go.mod文件
+命令行程序化修改 go.mod，无需手动打开文件编辑，适合脚本、自动化流程使用。
+使用时机：
+        自动化脚本批量修改模块配置；
+        批量添加 replace/exclude 规则；
+        不想手动编辑文本，统一命令管理 go.mod。
+用法：
+     # 修改模块名称
+     go mod edit -module github.com/new/name
+     # 添加本地替换依赖
+     go mod edit -replace github.com/gin-gonic/gin=../local-gin
+     # 排除指定版本依赖
+     go mod edit -exclude github.com/gin-gonic/gin v1.9.0
+
+6.go mod vendor 导出项目所有的依赖到vendor目录
+读取所有依赖，把依赖源码从全局缓存复制到项目内 vendor 文件夹，实现项目内置依赖。
+使用时机：
+        内网离线环境，服务器无法访问外网代理；
+        容器打包、无网络 CI 构建；
+        需要把所有依赖源码随项目一起交付。
+用法：
+      # 生成vendor目录
+      go mod vendor
+      # 编译时强制使用vendor内依赖，不走全局缓存
+      go build -mod=vendor
+      go run -mod=vendor main.go
+
+7.go mod verify 校验一个模块是否被篡改过
+校验本地缓存的所有依赖包哈希，和 go.sum 记录对比：哈希一致：依赖完整未篡改；哈希不一致：报错，说明依赖文件损坏 / 被篡改。
+使用时机：
+       怀疑依赖下载不完整、文件损坏；
+       安全校验，防止依赖劫持、投毒；
+       打包上线前做安全检查。
+用法：
+       # 全局校验所有依赖，无任何输出代表全部校验通过。
+       go mod verify
+
+8.go mod why 查看为什么需要依赖某模块
+逆向查询：这个依赖包被项目哪段代码 / 哪个模块引用，解释为什么当前项目需要该依赖。
+使用时机：
+       看到 indirect 间接依赖，不知道谁引入的；
+       想清理无用依赖，确认某个包是否真的需要；
+       排查多余依赖来源。
+用例：
+      # 查询为什么项目依赖validator，输出会展示完整引用链路：项目 → gin → validator。
+      go mod why github.com/go-playground/validator/v10
+
+二.GO111MODULE环境变量：
+1.GO111MODULE=on 启用Go module功能
+2.GO111MODULE=off
+3.GO111MODULE=auto
+
+三.GOPROXY环境变量：
+1.GOPROXY=https://mirrors.aliyun.com/goproxy/ 设置代理,使用阿里云的代理下载
+2.GOPROXY=https://mirrors.aliyun.com/goproxy/,direct  逗号分隔双策略：优先阿里云镜像加速下载依赖；镜像无包 / 访问失败时，自动切换 direct 直连源仓库
+  GOPROXY=direct  特殊标识，代表绕过所有代理，直接调用 git 拉取远程源码仓库，无加速，仅内网私有库、排查镜像问题时使用。
+3.GOPROXY=off 不使用代理
+
+四.GOSUMDB环境变量：
+联网的官方哈希校验库，用来核对第三方包是否被篡改；默认开启最安全，内网离线才设为 off
+
+五.GONOPROXY、GONOSUMDB、GOPRIVATE环境变量：
+当前项目依赖了私有模块，例如自己公司的私有仓库，或github中私有库时使用，否则拉取失败。
+需要设置GOPRIVATE环境变量，指定私有仓库的域名，来跳过代理和直连，直接从私有仓库拉取。
+
