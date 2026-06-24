@@ -1,6 +1,7 @@
 // main.go Gin 启动自动打开浏览器，无404
 package main
 
+//导入gin并使用
 import (
 	"net/http"
 	"os/exec"

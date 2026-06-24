@@ -34,6 +34,14 @@
     go mod tidy
 注意：使用该语句，必须满足go.mod文件存在，且项目的go文件和文件夹无中文。
 
+延伸：
+go get（手动精准控制单个依赖）
+只操作你指定的那一个第三方库，不会自动删除没用的依赖，只增 / 改版本。
+支持指定版本、升级、降级、删除依赖。
+使用时机：
+       明确要安装指定版本 Gin：go get github.com/gin-gonic/gin@v1.9.1
+       升级现有库到最新：go get -u github.com/gin-gonic/gin
+       彻底移除某个库：go get github.com/gin-gonic/gin@none
 
 4.go mod graph 查看现有的依赖结构
 打印完整依赖树，展示哪个包引入了哪个依赖，排查依赖冲突、版本冲突专用。
