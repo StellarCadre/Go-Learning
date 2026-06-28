@@ -8,12 +8,33 @@ import (
 	"sync"
 )
 
+/*
+1.func (s *Server) Start()是服务器端入口。
+  用于监听端口 8000的客户端连接。
+  可在此扩展全局广播的功能ListenMessager，ListenMessager的具体实现在他处，这里写一个协程调用即可。
+  循环等待客户端接入后，收到连接，丢给 handleConn 单独处理每一对连接后，双方的具体业务逻辑。handleConn的具体实现在他处，这里写一个协程调用即可。
+2.handleConn（单个客户端管家）
+  只服务某一个客户端，生命周期和这个客户端绑定。
+  如：
+  创建该用户的 User 实例。
+  执行该用户上线逻辑。
+  启动该用户专属读消息协程，接收他输入的文字、指令。
+  客户端断开时触发下线清理。
+  阻塞保活连接，连接断了这个协程直接结束。
+3.ListenMessager + Broadcast（全局广播分发器）
+  完全独立，和单个客户端无关。
+  不管是谁发的消息，统一塞进 s.Message 管道。
+  唯一的后台协程统一遍历所有在线用户，分发消息。
+  不管有多少客户端、多少个 handleConn，广播逻辑只有一份。
+  和 handleConn 的唯一微弱联系（仅调用关系，无绑定）
+*/
+
 // Server 结构体：定义服务器的核心属性
 type Server struct {
 	IP   string // 服务器监听的IP地址（如127.0.0.1为本机，0.0.0.0为所有网卡）
 	Port int    // 服务器监听的端口号（如8000，需避免占用系统端口）
 
-	OnlineMap map[string]*User //在线用户列表.
+	OnlineMap map[string]*User //在线用户列表
 	mapLock   sync.RWMutex     //
 	Message   chan string      //服务器端广播信息给各用户时使用的channel。
 
@@ -55,7 +76,16 @@ func (s *Server) ListenMessager() {
 // 接收参数：conn（net.Conn类型，代表客户端与服务器的TCP连接）
 // 注意：该方法绑定到Server结构体，可通过s访问服务器的IP/Port等属性
 func (s *Server) handleConn(conn net.Conn) {
-	//【扩展点】后续可在这里实现：读取客户端发送的数据、向客户端写数据、处理业务逻辑等
+	/*
+		单个客户端专属管家
+		只负责一条 TCP 连接从建立到断开的全生命周期：
+		打印连接日志；
+		创建 User 用户对象，绑定当前连接 + 服务端；
+		调用 user.Online() 完成上线、存入在线列表、广播上线通知；
+		新开独立协程，循环读取客户端发过来的所有文字指令（聊天、/list、/rename），交给 user.DoMessage 处理；
+		末尾 select{} 永久阻塞，防止当前协程直接退出导致连接销毁；
+		客户端断开 / 异常时，协程触发 user.Offline()，下线清理。
+	*/
 
 	// 打印连接成功的提示，conn.RemoteAddr()可获取客户端的IP+端口
 	fmt.Printf("链接建立成功，客户端地址：%s\n", conn.RemoteAddr().String())
@@ -68,7 +98,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	//给所有上线用户广播消息。建议将广播操作封装成一个函数，直接调用，保持代码清晰。
 	//s.Broadcast(user,"This user is online")
 	//改为：
-	user.Online()
+	user.Online() //这里仅是调用，不和ListenMessager + Broadcast高度绑定。用的时候才调用。
 
 	/*
 		什么时候要用到go func()：
@@ -84,7 +114,7 @@ func (s *Server) handleConn(conn net.Conn) {
 		          开协程才能同时处理成千上万客户端。
 	*/
 
-	//接收客户端信息，并把该信息广播给所有在线用户的协程函数
+	//单独开协程，持续读取【当前这个客户端】发来的所有输入（聊天、/list、/rename）接收客户端信息。
 	go func() { // 为当前用户单独启动读取消息协程
 		for { // 无限循环，持续等待客户端发数据
 			msg := make([]byte, 4096)     // 1. 开辟4096字节缓冲区，用来存放客户端发来的二进制数据
@@ -93,7 +123,7 @@ func (s *Server) handleConn(conn net.Conn) {
 				//用户业务封装环节，代码替换
 				//s.Broadcast(user,"This user is offline")  // 推送下线广播，告知全体用户该用户离线
 				//改为：
-				user.Offline()
+				user.Offline() //这里仅是调用，不和ListenMessager + Broadcast高度绑定。用的时候才调用。
 
 				return
 			}
@@ -112,7 +142,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	select {}
 }
 
-// Start 启动服务器方法：服务器的核心运行逻辑
+// Start 启动服务器方法：服务器的核心运行逻辑    Start 本身不处理任何客户端收发、用户业务，只管开门接客，接进来就分给 handleConn
 func (s *Server) Start() {
 	// 1. 监听TCP端口：net.Listen("tcp", 地址字符串)
 	// 地址格式：IP:Port（如127.0.0.1:8000），通过fmt.Sprintf拼接

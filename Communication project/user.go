@@ -1,8 +1,14 @@
 // 创建时间：2026/6/23 下午9:53
 package main
 
+/*
+user.go 是单个客户端的业务封装层。
+
+
+*/
 import (
 	"net"
+	"strings"
 )
 
 type User struct {
@@ -31,26 +37,67 @@ func NewUser(conn net.Conn, s *Server) *User {
 	return user
 }
 
-func (User *User) Online() {
+func (User *User) Online() { //完成用户上线全套业务，对外只暴露一行调用，隐藏锁、map 操作、广播
 	User.server.mapLock.Lock()
 	User.server.OnlineMap[User.Name] = User
 	User.server.mapLock.Unlock()
-	User.server.Broadcast(User, "This user is online")
+	User.server.Broadcast(User, "zaixian")
 }
 
-func (User *User) Offline() {
+func (User *User) Offline() { //客户端断开时清理资源、下线通知
 	User.server.mapLock.Lock()
 	delete(User.server.OnlineMap, User.Name)
 	User.server.mapLock.Unlock()
-	User.server.Broadcast(User, "This user is offline")
+	User.server.Broadcast(User, "lixian")
 }
 
-// 客户端业务处理逻辑
-func (User *User) DoMessage(msg string) {
-	User.server.Broadcast(User, msg)
+// 客户端业务处理逻辑，处理客户端发给服务器的上行数据
+func (u *User) DoMessage(msg string) {
+	// 1. 在线用户查询：统一用 /list 标准指令
+	trimMsg := strings.TrimSpace(msg) // 剔除回车、空格、换行，纯净匹配指令
+	if trimMsg == "/list" {
+		u.server.mapLock.RLock()       // 加读锁，并发安全读取在线用户map，只读场景用读锁提升并发性能
+		var onlineList strings.Builder // 使用strings.Builder字符串拼接，相比+拼接效率更高，适合多行文本组装
+		onlineList.WriteString("=====当前在线用户=====\r\n")
+		for _, user := range u.server.OnlineMap { // 遍历服务端全部在线用户，拼接每个用户地址+昵称在线状态
+			onlineList.WriteString("[" + user.Address + "] " + user.Name + " 在线\r\n")
+		}
+		u.server.mapLock.RUnlock()
+
+		u.conn.Write([]byte(onlineList.String())) // 仅将在线列表单发至发起查询的当前客户端，不全局广播
+		return
+	}
+	// 2. 改名指令：/rename 新名字，空格分割，修复越界、锁、判空
+	if strings.HasPrefix(trimMsg, "/rename ") {
+		newName := strings.TrimSpace(strings.TrimPrefix(trimMsg, "/rename ")) // 截取/rename前缀后的内容，并再次去空格，提取纯净新用户名
+		if newName == "" {                                                    // 校验：新用户名不能为空
+			u.conn.Write([]byte("改名失败：用户名不能为空\r\n"))
+			return
+		}
+		// 读锁先判断名字占用
+		u.server.mapLock.RLock()
+		_, exist := u.server.OnlineMap[newName]
+		u.server.mapLock.RUnlock()
+		if exist {
+			u.conn.Write([]byte("改名失败：用户名已被占用\r\n"))
+			return
+		}
+		// 写锁修改在线map键值
+		u.server.mapLock.Lock()            // 加写锁，独占修改在线用户map（增删map必须写锁，保证并发安全）
+		delete(u.server.OnlineMap, u.Name) // 删掉map中原用户名对应的旧键，OnlineMap键为用户名，必须同步删除旧索引
+		u.Name = newName                   // 更新当前User结构体内部的昵称字段
+		u.server.OnlineMap[u.Name] = u     // 以新用户名为键，重新将当前用户存入在线map，完成键名更替
+		u.server.mapLock.Unlock()
+
+		u.conn.Write([]byte("改名成功，新昵称：" + newName + "\r\n")) // 单发成功提示给改名操作者本人
+		u.server.Broadcast(u, "用户修改昵称为："+newName)            // 全局广播改名事件，告知所有在线用户该用户昵称变更
+		return
+	}
+	// 3. 普通聊天消息全局广播
+	u.server.Broadcast(u, trimMsg)
 }
 
-// 监听当前每个用户各自的User channel，一旦服务器端广播了消息到channel，就发送给用户
+// 处理服务器推给客户端的下行广播数据。监听当前每个用户各自的User channel，一旦服务器端广播了消息到channel，就发送给用户。
 func (u *User) ListenMessage() {
 	for { //持续监听
 		msg := <-u.C                     //把得到的信息放到msg变量中保存
