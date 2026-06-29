@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 /*
@@ -64,11 +65,14 @@ func (s *Server) Broadcast(user *User, message string) { //待发送的对象和
 func (s *Server) ListenMessager() {
 	for {
 		msg := <-s.Message
-		s.mapLock.Lock()
+		s.mapLock.RLock()
 		for _, user := range s.OnlineMap {
-			user.C <- msg
+			select {
+			case user.C <- msg:
+			default:
+			}
 		}
-		s.mapLock.Unlock()
+		s.mapLock.RUnlock()
 	}
 }
 
@@ -100,6 +104,8 @@ func (s *Server) handleConn(conn net.Conn) {
 	//改为：
 	user.Online() //这里仅是调用，不和ListenMessager + Broadcast高度绑定。用的时候才调用。
 
+	isLive := make(chan bool) //用户是否活跃的channel,若执行了下面的go func()，表示客户端发来了信息，当前客户端活跃，向管道写入true
+
 	/*
 		什么时候要用到go func()：
 		   不写 go 的问题（同步阻塞）：代码是从上到下顺序执行，遇到阻塞函数，整个当前函数直接卡在原地，后面代码永远走不到。
@@ -124,7 +130,6 @@ func (s *Server) handleConn(conn net.Conn) {
 				//s.Broadcast(user,"This user is offline")  // 推送下线广播，告知全体用户该用户离线
 				//改为：
 				user.Offline() //这里仅是调用，不和ListenMessager + Broadcast高度绑定。用的时候才调用。
-
 				return
 			}
 			if err != nil && err != io.EOF { // 分支2：读取出现非EOF异常，网络中断、强制断连、网络报错
@@ -136,10 +141,40 @@ func (s *Server) handleConn(conn net.Conn) {
 			//s.Broadcast(user,message)  // 4. 调用全局广播，把这条用户输入的消息推送给所有在线客户端
 			//改为：
 			user.DoMessage(message)
+
+			isLive <- true //程序走当前func，表示活跃
 		}
 	}()
+
 	//当前hanleConn阻塞，防止退出
-	select {}
+	for {
+		select { //监听管道中是否有数据
+		case <-isLive:
+			//只要客户端发过消息，isLive 里就有数据，会走到这个分支。且这里没什么代码，瞬间执行完毕，回到for。
+		case <-time.After(time.Second * 300): //每次走到select，都会重新生成一个新的定时器，重新开始倒计时。
+			//已经超时
+			user.conn.Write([]byte("You are inactive too long, force to exit"))
+			user.Offline() // 先移除在线列表，广播下线
+			close(user.C)
+			conn.Close()
+			return
+		}
+	}
+	/* 这里select中代码的详细讲解。
+	   每次走到 select 关键字时，不会先等某个 case，而是并行求值所有 case 右边的表达式：
+	执行 <-isLive：只读取通道，无创建动作
+	执行 time.After(30*time.Second)：立刻创建新定时器，开始倒计时
+	两个表达式同时运算完毕，之后才阻塞等待其中任意一个通道就绪。
+	time.After 写在第二个 case，不影响它进入 select 瞬间就执行、新建计时器。case 只是分支判断，表达式不分先后顺序执行。
+	   完整执行流程：
+	第一轮 for 循环 → 进入 select
+	立刻执行 time.After，生成定时器 A，倒计时 30s；
+	10 秒后客户端发消息， isLive <- true；
+	select 匹配 case <-isLive，整个 select 直接退出；
+	回到外层 for 循环头部，再次执行 select；
+	再次执行第一个case的同时执行第二个 case 的 time.After，生成全新定时器 B，重新从 0 倒计时 30 秒；
+
+	*/
 }
 
 // Start 启动服务器方法：服务器的核心运行逻辑    Start 本身不处理任何客户端收发、用户业务，只管开门接客，接进来就分给 handleConn

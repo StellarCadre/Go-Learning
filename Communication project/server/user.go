@@ -93,7 +93,46 @@ func (u *User) DoMessage(msg string) {
 		u.server.Broadcast(u, "用户修改昵称为："+newName)            // 全局广播改名事件，告知所有在线用户该用户昵称变更
 		return
 	}
-	// 3. 普通聊天消息全局广播
+
+	// 3.私聊指令：/to 用户名 消息内容
+	//执行主体：*User 类型对象 u，代表当前发消息的客户端用户
+	//触发前提：客户端输入内容经过 strings.TrimSpace(msg) 去除首尾空格、换行，存入 trimMsg
+	if strings.HasPrefix(trimMsg, "/to ") { // 匹配私聊指令：必须以 /to 空格开头，区分普通聊天
+		//按空格分割字符串，最多拆成3段
+		parts := strings.SplitN(trimMsg, " ", 3)
+		if len(parts) < 3 {
+			u.conn.Write([]byte("格式错误！正确格式：/to 用户名 私聊内容\r\n"))
+			return
+		}
+		targetName := parts[1] // 目标私聊对象的用户名
+		priContent := parts[2] // 私聊正文内容
+
+		// 读锁保护读取在线用户
+		u.server.mapLock.RLock()                            //mapLock.RLock()：加读共享锁，多客户端可同时读在线表，不阻塞其他查询，性能优于写锁
+		targetUser, exist := u.server.OnlineMap[targetName] //u.server：当前用户绑定的服务端实例，OnlineMap 是服务端全局在线用户字典：map[用户名]*User
+		/*
+			用 targetName 作为键查找，得到两个返回值:
+			   targetUser：目标用户的 User 结构体指针（包含对方 TCP 连接、专属消息通道 C）
+			   exist：布尔值，true = 用户在线，false = 用户离线
+		*/
+		u.server.mapLock.RUnlock()
+		if !exist {
+			u.conn.Write([]byte("私聊失败：该用户不在线\r\n"))
+			return
+		}
+
+		// 组装私聊消息，带发送人标记
+		priMsg := "[私聊]" + u.Name + "对你说：" + priContent //u.Name：发送者自身昵称，用来让接收方知道是谁发来的私聊
+		select {
+		case targetUser.C <- priMsg: //拼接完整提示文案，存入 priMsg，这条消息只会投递到目标用户的专属通道
+		default:
+		}
+		// 给自己回显发送记录
+		u.conn.Write([]byte("你私聊【" + targetName + "】：" + priContent + "\r\n"))
+		return
+	}
+
+	// 4. 普通聊天消息全局广播
 	u.server.Broadcast(u, trimMsg)
 }
 
