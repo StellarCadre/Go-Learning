@@ -1,0 +1,33 @@
+HTTP 深度学习
+一、 http.Server 完整配置 + 手写中间件
+学习内容
+完整实例化http.Server，配置：
+ReadTimeout、WriteTimeout、IdleTimeout、MaxHeaderBytes
+http.Handler 接口原理，手写链式中间件（日志中间件、跨域中间件）
+原生ServeMux路由、Go1.22 路径参数、路由分组思路
+请求解析：r.URL.Query url 参数、r.PostForm表单、json.Decoder流式解析 JSON
+实操任务
+独立写无框架 HTTP 服务，实现：
+/ping 健康检测接口
+/user/list GET 分页接口
+/user/add POST JSON 新增接口
+全局日志中间件（打印请求路径、耗时、状态码）
+
+
+
+二、 HTTP 客户端 + 优雅停机 Shutdown
+学习内容
+http.Client 全局复用，禁止每次请求新建
+http.Transport 连接池参数（最大空闲连接、空闲超时）
+NewRequestWithContext 带超时 HTTP 请求
+os.Signal 监听 SIGINT (Ctrl+C)，server.Shutdown() 优雅等待请求处理完再退出
+实操任务
+写 HTTP 客户端调用自己的服务，设置 3s 请求超时；
+给 HTTP 服务增加优雅关闭逻辑，Ctrl+C 不会强行切断正在处理的请求。
+
+三、 UDP 拓展学习
+学习内容
+UDP 无连接特性，ListenUDP、ReadFromUDP、WriteToUDP
+UDP 适用场景：心跳、上报、DNS
+实操任务
+简易 UDP 心跳服务：客户端定时发心跳包，服务记录在线设备
