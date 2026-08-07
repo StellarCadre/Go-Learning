@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>诗词展示</title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body{
+            background: #f7f3ec;
+            font-family: "SimSun","宋体",serif;
+            display: flex;
+            justify-content: center;
+            padding: 80px 20px;
+        }
+        .poem-card{
+            width: 480px;
+            background: #fffcf6;
+            padding: 50px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .title{
+            text-align: center;
+            font-size: 30px;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .author{
+            text-align: center;
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 36px;
+        }
+        .content{
+            font-size: 20px;
+            line-height: 2.2;
+            color: #222;
+            text-align: center;
+        }
+        .line{
+            margin: 6px 0;
+        }
+        .note{
+            margin-top: 40px;
+            font-size: 14px;
+            color: #777;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="poem-card">
+        <h2 class="title">水调歌头·明月几时有</h2>
+        <div class="author">苏轼 〔宋〕</div>
+        <div class="content">
+            <div class="line">明月几时有？把酒问青天。</div>
+            <div class="line">不知天上宫阙，今夕是何年。</div>
+            <div class="line">我欲乘风归去，又恐琼楼玉宇，高处不胜寒。</div>
+            <div class="line">起舞弄清影，何似在人间。</div>
+            <br>
+            <div class="line">转朱阁，低绮户，照无眠。</div>
+            <div class="line">不应有恨，何事长向别时圆？</div>
+            <div class="line">人有悲欢离合，月有阴晴圆缺，此事古难全。</div>
+            <div class="line">但愿人长久，千里共婵娟。</div>
+        </div>
+        <div class="note">
+            注释：丙辰中秋，欢饮达旦，大醉，作此篇，兼怀子由。
+        </div>
+    </div>
+</body>
+</html>

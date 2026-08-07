@@ -25,3 +25,4 @@ go 1.26
 //新增 import 第三方包 → 执行go mod tidy，自动添加 require；
 //升级 / 降级依赖 → go get 包名@版本，自动修改版本号；
 //删除无用导入 → go mod tidy，自动清理废弃 require 行。
+

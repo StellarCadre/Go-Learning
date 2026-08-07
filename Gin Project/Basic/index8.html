@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>index</title>
+</head>
+<body>
+<!--
+action="/upload"：提交地址，对应Gin后端路由
+method="post"：文件上传必须POST
+enctype="multipart/form-data"：**重点！上传文件必填**
+如果不加这个属性，浏览器无法以二进制形式传输文件
+-->
+<form action="/upload" method="post" enctype="multipart/form-data">
+    <!-- name="f1" 后端获取文件时，名称必须和这里一致 -->
+    <input type="file" name="f1">
+    <input type="submit" value="上传">
+</form>
+</body>
+</html>
