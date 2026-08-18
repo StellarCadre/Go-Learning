@@ -23,3 +23,5 @@ func main() {
 	r.Run(":8080")
 
 }
+
+//启动方式：http://127.0.0.1:8080/user/login
